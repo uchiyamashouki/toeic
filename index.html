@@ -5,9 +5,7 @@
   <title>TOEIC ワンクリック理解度記録</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     html, body {
       margin: 0;
       padding: 0;
@@ -21,6 +19,36 @@
       display: flex;
       flex-direction: column;
     }
+
+    /* タブ */
+    .tab-bar {
+      display: flex;
+      background: #020617;
+      border-bottom: 1px solid #1f2937;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-active {
+      border-color: #38bdf8;
+      background: #0f172a;
+      font-weight: 600;
+    }
+
+    .view {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+    }
+    .view-active {
+      display: flex;
+    }
+
     .header {
       padding: 10px 14px;
       background: #0f172a;
@@ -44,6 +72,7 @@
       border-radius: 999px;
       background: #1f2937;
       font-size: 0.75rem;
+      margin-left: 4px;
     }
     .jump-input {
       width: 90px;
@@ -75,6 +104,12 @@
       margin-top: 2px;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .per-question-row {
+      font-size: 0.85rem;
+      margin-top: 4px;
     }
 
     .button-area {
@@ -115,47 +150,144 @@
       font-size: 0.75rem;
       opacity: 0.8;
     }
+
+    /* 履歴ビュー */
+    .history-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 8px 12px;
+      background: #020617;
+    }
+    .history-info {
+      font-size: 0.8rem;
+      opacity: 0.8;
+      margin-bottom: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    th, td {
+      padding: 6px 4px;
+      border-bottom: 1px solid #1f2937;
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #020617;
+      z-index: 1;
+    }
+    .history-select {
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid #4b5563;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    .history-delete {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: none;
+      background: #7f1d1d;
+      color: #fee2e2;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+    .history-delete:active {
+      opacity: 0.8;
+      transform: scale(0.96);
+    }
+    .history-index-cell {
+      font-weight: 600;
+    }
+    .history-known {
+      color: #bbf7d0;
+    }
+    .history-unknown {
+      color: #fecaca;
+    }
   </style>
 </head>
 <body>
   <div class="app">
-    <!-- 上部の情報エリア -->
-    <div class="header">
-      <div class="current-word">
-        現在：<span id="currentIndex">1</span> 単語目
-        <span class="badge">番号だけ管理モード</span>
+    <!-- タブバー -->
+    <div class="tab-bar">
+      <div id="tab-main" class="tab tab-active" onclick="switchTab('main')">学習</div>
+      <div id="tab-history" class="tab" onclick="switchTab('history')">履歴・編集</div>
+    </div>
+
+    <!-- 学習ビュー -->
+    <div id="view-main" class="view view-active">
+      <div class="header">
+        <div class="current-word">
+          現在：<span id="currentIndex">1</span> 問目
+          <span class="badge">番号だけ管理モード</span>
+        </div>
+        <div class="row">
+          <span style="font-size:0.8rem;">移動先：</span>
+          <input
+            id="jumpInput"
+            type="number"
+            class="jump-input"
+            min="1"
+            inputmode="numeric"
+          />
+          <button class="small-btn" onclick="jumpToWord()">この番号へ移動</button>
+          <button class="small-btn" onclick="step(-1)">← 1つ戻る</button>
+          <button class="small-btn" onclick="step(1)">1つ進む →</button>
+        </div>
+
+        <div class="counter-row" id="stats">
+          まだ回答履歴がありません
+        </div>
+        <div class="per-question-row" id="perQuestionStats">
+          この問題の履歴：記録なし
+        </div>
       </div>
-      <div class="row">
-        <span style="font-size:0.8rem;">移動先：</span>
-        <input
-          id="jumpInput"
-          type="number"
-          class="jump-input"
-          min="1"
-          inputmode="numeric"
-        />
-        <button class="small-btn" onclick="jumpToWord()">この番号へ移動</button>
-        <button class="small-btn" onclick="step(-1)">← 1つ戻る</button>
-        <button class="small-btn" onclick="step(1)">1つ進む →</button>
+
+      <div class="button-area">
+        <button class="btn btn-yes" onclick="recordAnswer('known')">
+          わかる
+        </button>
+        <button class="btn btn-no" onclick="recordAnswer('unknown')">
+          わからない
+        </button>
       </div>
-      <div class="counter-row" id="stats">
-        まだ回答履歴がありません
+
+      <div class="footer">
+        ・紙の単語帳や別アプリの単語を見ながら、今の「問題番号」だけをここで記録します。<br />
+        ・タップすると「記録＋番号+1」に自動で進みます（履歴はブラウザに保存）。
       </div>
     </div>
 
-    <!-- 画面ほぼ全体を使う二択ボタン -->
-    <div class="button-area">
-      <button class="btn btn-yes" onclick="recordAnswer('known')">
-        わかる
-      </button>
-      <button class="btn btn-no" onclick="recordAnswer('unknown')">
-        わからない
-      </button>
-    </div>
-
-    <div class="footer">
-      ・紙の単語帳や別アプリの単語を見ながら、今の「単語番号」だけをここで記録します。<br />
-      ・タップすると「記録＋番号+1」に自動で進みます（履歴はブラウザに保存）。
+    <!-- 履歴ビュー -->
+    <div id="view-history" class="view">
+      <div class="header">
+        <div class="current-word">
+          履歴一覧・編集
+        </div>
+        <div class="history-info">
+          各行の結果を変更したり、不要な履歴を削除できます。上から新しい順に表示。
+        </div>
+      </div>
+      <div class="history-container">
+        <table>
+          <thead>
+            <tr>
+              <th>時刻</th>
+              <th>問番号</th>
+              <th>結果</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <!-- JSで挿入 -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -164,12 +296,13 @@
     const STORAGE_LOGS_KEY  = "toeic_simple_logs_v1";
 
     let state = {
-      currentIndex: 1   // 今何単語目か（1始まり）
+      currentIndex: 1   // 今何問目か（1始まり）
     };
 
-    /** ログ: { time, index, result } を配列で保持 */
+    // ログ: { time, index, result } を配列で保持
     let logs = [];
 
+    // ------------------ ストレージ関連 ------------------
     function loadFromStorage() {
       try {
         const s = localStorage.getItem(STORAGE_STATE_KEY);
@@ -189,12 +322,109 @@
       localStorage.setItem(STORAGE_LOGS_KEY, JSON.stringify(logs));
     }
 
-    function render() {
-      document.getElementById("currentIndex").textContent = state.currentIndex;
-      document.getElementById("jumpInput").value = "";
-      updateStats();
+    // ------------------ タブ切り替え ------------------
+    function switchTab(tab) {
+      const mainTab = document.getElementById("tab-main");
+      const histTab = document.getElementById("tab-history");
+      const mainView = document.getElementById("view-main");
+      const histView = document.getElementById("view-history");
+
+      if (tab === "main") {
+        mainTab.classList.add("tab-active");
+        histTab.classList.remove("tab-active");
+        mainView.classList.add("view-active");
+        histView.classList.remove("view-active");
+      } else {
+        mainTab.classList.remove("tab-active");
+        histTab.classList.add("tab-active");
+        mainView.classList.remove("view-active");
+        histView.classList.add("view-active");
+      }
     }
 
+    // ------------------ 画面描画 ------------------
+    function renderMain() {
+      document.getElementById("currentIndex").textContent = state.currentIndex;
+      document.getElementById("jumpInput").value = "";
+      updateGlobalStats();
+      updatePerQuestionStats();
+    }
+
+    function renderHistory() {
+      const tbody = document.getElementById("historyBody");
+      tbody.innerHTML = "";
+
+      if (logs.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 4;
+        td.textContent = "まだ履歴がありません。";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      // 新しいものを上に表示したいので逆順で回す
+      for (let i = logs.length - 1; i >= 0; i--) {
+        const log = logs[i];
+        const tr = document.createElement("tr");
+
+        // 時刻
+        const tdTime = document.createElement("td");
+        const date = new Date(log.time);
+        tdTime.textContent = isNaN(date.getTime())
+          ? log.time
+          : date.toLocaleString();
+        tr.appendChild(tdTime);
+
+        // 問番号
+        const tdIndex = document.createElement("td");
+        tdIndex.textContent = log.index;
+        tdIndex.className = "history-index-cell";
+        tr.appendChild(tdIndex);
+
+        // 結果（編集可能）
+        const tdResult = document.createElement("td");
+        const select = document.createElement("select");
+        select.className = "history-select";
+        const optKnown = document.createElement("option");
+        optKnown.value = "known";
+        optKnown.textContent = "わかる";
+        const optUnknown = document.createElement("option");
+        optUnknown.value = "unknown";
+        optUnknown.textContent = "わからない";
+        select.appendChild(optKnown);
+        select.appendChild(optUnknown);
+        select.value = log.result;
+
+        if (log.result === "known") {
+          tdResult.classList.add("history-known");
+        } else {
+          tdResult.classList.add("history-unknown");
+        }
+
+        select.onchange = function () {
+          updateLogResult(i, this.value);
+        };
+        tdResult.appendChild(select);
+        tr.appendChild(tdResult);
+
+        // 操作（削除）
+        const tdAction = document.createElement("td");
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "削除";
+        delBtn.className = "history-delete";
+        delBtn.onclick = function () {
+          deleteLog(i);
+        };
+        tdAction.appendChild(delBtn);
+        tr.appendChild(tdAction);
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ------------------ 学習側操作 ------------------
     function recordAnswer(result) {
       const nowIso = new Date().toISOString();
       logs.push({
@@ -204,10 +434,13 @@
       });
       saveLogs();
 
-      // 次の単語へ自動で進む
+      // 次の問題へ自動で進む
       state.currentIndex = Math.max(1, state.currentIndex + 1);
       saveState();
-      render();
+
+      // 両方の画面を更新
+      renderMain();
+      renderHistory();
     }
 
     function jumpToWord() {
@@ -219,17 +452,18 @@
       }
       state.currentIndex = value;
       saveState();
-      render();
+      renderMain();
     }
 
     function step(delta) {
       const next = state.currentIndex + delta;
       state.currentIndex = Math.max(1, next);
       saveState();
-      render();
+      renderMain();
     }
 
-    function updateStats() {
+    // ------------------ 統計 ------------------
+    function updateGlobalStats() {
       const statsEl = document.getElementById("stats");
       if (logs.length === 0) {
         statsEl.textContent = "まだ回答履歴がありません";
@@ -252,9 +486,47 @@
         `「わからない」: ${unknown}件`;
     }
 
-    // 初期ロード
+    function updatePerQuestionStats() {
+      const el = document.getElementById("perQuestionStats");
+      const idx = state.currentIndex;
+      const filtered = logs.filter(l => l.index === idx);
+      if (filtered.length === 0) {
+        el.textContent = "この問題の履歴：記録なし";
+        return;
+      }
+      let known = 0;
+      let unknown = 0;
+      for (const log of filtered) {
+        if (log.result === "known") known++;
+        else if (log.result === "unknown") unknown++;
+      }
+      el.textContent =
+        `この問題の履歴：「わかる」 ${known} 回 / 「わからない」 ${unknown} 回（合計 ${filtered.length} 回）`;
+    }
+
+    // ------------------ 履歴編集 ------------------
+    function updateLogResult(indexInLogs, newResult) {
+      if (!logs[indexInLogs]) return;
+      logs[indexInLogs].result = newResult;
+      saveLogs();
+      // 変更が統計に反映されるよう両画面更新
+      renderMain();
+      renderHistory();
+    }
+
+    function deleteLog(indexInLogs) {
+      if (!logs[indexInLogs]) return;
+      if (!confirm("この履歴を削除しますか？")) return;
+      logs.splice(indexInLogs, 1);
+      saveLogs();
+      renderMain();
+      renderHistory();
+    }
+
+    // ------------------ 初期化 ------------------
     loadFromStorage();
-    render();
+    renderMain();
+    renderHistory();
   </script>
 </body>
 </html>
