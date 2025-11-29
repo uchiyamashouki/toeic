@@ -2,367 +2,259 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>TOEIC 単語理解度チェッカー</title>
+  <title>TOEIC ワンクリック理解度記録</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-    }
-    .wrap {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-    h1 { font-size: 1.4rem; margin-bottom: 8px; }
-    h2 { font-size: 1.1rem; margin-top: 24px; margin-bottom: 8px; }
-
-    .card {
-      background: #111827;
-      border-radius: 16px;
-      padding: 16px;
-      margin-top: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-    }
-
-    .word-main {
-      font-size: 2rem;
-      font-weight: 700;
-      text-align: center;
-      margin: 12px 0 4px;
-    }
-    .word-sub {
-      font-size: 1rem;
-      text-align: center;
-      opacity: 0.8;
-    }
-
-    .btn-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 16px;
-    }
-    .btn {
-      flex: 1;
-      padding: 16px 8px;
-      border-radius: 999px;
-      border: none;
-      font-size: 1.2rem;
-      font-weight: 600;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-    .btn-yes { background: #16a34a; color: #ecfdf5; }
-    .btn-no  { background: #dc2626; color: #fef2f2; }
-
-    .btn-yes:active { opacity: 0.8; transform: scale(0.98); }
-    .btn-no:active  { opacity: 0.8; transform: scale(0.98); }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.9rem;
-      opacity: 0.8;
-      margin-top: 8px;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 140px;
-      border-radius: 10px;
-      border: 1px solid #374151;
-      padding: 8px;
       background: #020617;
       color: #e5e7eb;
-      box-sizing: border-box;
-      font-family: monospace;
+    }
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      padding: 10px 14px;
+      background: #0f172a;
+      border-bottom: 1px solid #1f2937;
       font-size: 0.9rem;
     }
-
-    .small-btn {
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: none;
-      font-size: 0.9rem;
-      cursor: pointer;
-      background: #334155;
-      color: #e5e7eb;
-      margin-top: 8px;
-    }
-    .small-btn:active { opacity: 0.8; }
-
-    .stats {
-      font-size: 0.9rem;
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
       margin-top: 4px;
-      line-height: 1.5;
     }
-
+    .current-word {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
     .badge {
       display: inline-block;
       padding: 2px 8px;
       border-radius: 999px;
-      font-size: 0.75rem;
       background: #1f2937;
-      margin-left: 4px;
+      font-size: 0.75rem;
+    }
+    .jump-input {
+      width: 90px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+    }
+    .small-btn {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: none;
+      background: #334155;
+      color: #e5e7eb;
+      font-size: 0.85rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .small-btn:active {
+      opacity: 0.8;
+      transform: scale(0.97);
     }
 
-    .hint {
+    .counter-row {
       font-size: 0.8rem;
-      opacity: 0.75;
-      margin-top: 4px;
+      opacity: 0.8;
+      margin-top: 2px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .button-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .btn {
+      flex: 1;
+      border: none;
+      width: 100%;
+      font-size: 2.3rem;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+    .btn-yes {
+      background: #16a34a;
+      color: #ecfdf5;
+      border-bottom: 1px solid #0f172a;
+    }
+    .btn-no {
+      background: #dc2626;
+      color: #fef2f2;
+    }
+    .btn:active {
+      opacity: 0.8;
+      transform: scale(0.99);
+    }
+
+    .footer {
+      padding: 4px 12px 8px;
+      background: #020617;
+      font-size: 0.75rem;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>TOEIC 単語 理解度ワンクリック記録</h1>
-    <p style="font-size:0.9rem; opacity:0.8;">
-      歩きながら・エアロバイクしながら、<br>
-      出てきた単語に対して <strong>「わかる / わからない」</strong> をタップするだけで記録できます。
-    </p>
-
-    <!-- 単語入力エリア -->
-    <div class="card">
-      <h2>① 単語リストの登録</h2>
-      <p class="hint">
-        1行に1単語で入力してください：<br>
-        <code>apple,リンゴ</code> のように「英単語,日本語訳」形式推奨。<br>
-        例：1500行分まとめて貼り付けてもOK。
-      </p>
-      <textarea id="wordInput" placeholder="例&#10;apple,リンゴ&#10;book,本&#10;...&#10;（ここに1500語貼り付け）"></textarea>
-      <button class="small-btn" onclick="saveWordList()">この単語リストを保存する</button>
-      <div class="stats" id="wordCountInfo"></div>
+  <div class="app">
+    <!-- 上部の情報エリア -->
+    <div class="header">
+      <div class="current-word">
+        現在：<span id="currentIndex">1</span> 単語目
+        <span class="badge">番号だけ管理モード</span>
+      </div>
+      <div class="row">
+        <span style="font-size:0.8rem;">移動先：</span>
+        <input
+          id="jumpInput"
+          type="number"
+          class="jump-input"
+          min="1"
+          inputmode="numeric"
+        />
+        <button class="small-btn" onclick="jumpToWord()">この番号へ移動</button>
+        <button class="small-btn" onclick="step(-1)">← 1つ戻る</button>
+        <button class="small-btn" onclick="step(1)">1つ進む →</button>
+      </div>
+      <div class="counter-row" id="stats">
+        まだ回答履歴がありません
+      </div>
     </div>
 
-    <!-- 学習画面 -->
-    <div class="card">
-      <h2>② 学習＆記録</h2>
-      <div class="info-row">
-        <div>現在の番号: <span id="currentIndex">-</span></div>
-        <div>登録単語数: <span id="totalWords">0</span></div>
-      </div>
-
-      <div class="word-main" id="wordMain">単語が未登録</div>
-      <div class="word-sub" id="wordSub">上で単語リストを保存してください</div>
-
-      <div class="btn-row">
-        <button class="btn btn-yes" onclick="recordAnswer('known')">わかる</button>
-        <button class="btn btn-no"  onclick="recordAnswer('unknown')">わからない</button>
-      </div>
-
-      <div class="info-row" style="margin-top:12px;">
-        <div>周回: <span id="roundInfo">0</span></div>
-        <div>ランダム順: <span id="modeInfo">OFF</span></div>
-      </div>
-
-      <button class="small-btn" onclick="toggleRandomMode()">
-        出題順をランダム / 順番 に切り替え
+    <!-- 画面ほぼ全体を使う二択ボタン -->
+    <div class="button-area">
+      <button class="btn btn-yes" onclick="recordAnswer('known')">
+        わかる
       </button>
-      <button class="small-btn" onclick="nextWordManual()">
-        次の単語へスキップ
+      <button class="btn btn-no" onclick="recordAnswer('unknown')">
+        わからない
       </button>
+    </div>
 
-      <div class="stats" id="statsArea"></div>
+    <div class="footer">
+      ・紙の単語帳や別アプリの単語を見ながら、今の「単語番号」だけをここで記録します。<br />
+      ・タップすると「記録＋番号+1」に自動で進みます（履歴はブラウザに保存）。
     </div>
   </div>
 
   <script>
-    const STORAGE_WORDS_KEY = "toeic_words_v1";
-    const STORAGE_LOGS_KEY  = "toeic_logs_v1";
-    const STORAGE_STATE_KEY = "toeic_state_v1";
+    const STORAGE_STATE_KEY = "toeic_simple_state_v1";
+    const STORAGE_LOGS_KEY  = "toeic_simple_logs_v1";
 
-    let words = [];       // {en, jp}
-    let logs = [];        // {time, index, result}
-    let state = {         // 学習状態
-      currentIndex: 0,
-      randomMode: false,
-      round: 1
+    let state = {
+      currentIndex: 1   // 今何単語目か（1始まり）
     };
 
-    // ---- 初期化 ----
+    /** ログ: { time, index, result } を配列で保持 */
+    let logs = [];
+
     function loadFromStorage() {
       try {
-        const w = localStorage.getItem(STORAGE_WORDS_KEY);
-        const l = localStorage.getItem(STORAGE_LOGS_KEY);
         const s = localStorage.getItem(STORAGE_STATE_KEY);
-
-        words = w ? JSON.parse(w) : [];
-        logs  = l ? JSON.parse(l) : [];
-        state = s ? JSON.parse(s) : state;
+        const l = localStorage.getItem(STORAGE_LOGS_KEY);
+        if (s) state = JSON.parse(s);
+        if (l) logs  = JSON.parse(l);
       } catch (e) {
         console.error("load error", e);
-        words = [];
-        logs = [];
       }
     }
 
-    function saveWords() {
-      localStorage.setItem(STORAGE_WORDS_KEY, JSON.stringify(words));
-    }
-    function saveLogs() {
-      localStorage.setItem(STORAGE_LOGS_KEY, JSON.stringify(logs));
-    }
     function saveState() {
       localStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(state));
     }
 
-    // ---- 単語リスト保存 ----
-    function saveWordList() {
-      const text = document.getElementById("wordInput").value;
-      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    function saveLogs() {
+      localStorage.setItem(STORAGE_LOGS_KEY, JSON.stringify(logs));
+    }
 
-      const parsed = lines.map(line => {
-        const parts = line.split(",");
-        const en = parts[0] ? parts[0].trim() : "";
-        const jp = parts[1] ? parts[1].trim() : "";
-        return { en, jp };
-      }).filter(w => w.en.length > 0);
-
-      if (parsed.length === 0) {
-        alert("有効な単語が見つかりませんでした。形式を確認してください。");
-        return;
-      }
-
-      words = parsed;
-      state.currentIndex = 0;
-      state.round = 1;
-      saveWords();
-      saveState();
-      updateWordCountInfo();
-      renderWord();
+    function render() {
+      document.getElementById("currentIndex").textContent = state.currentIndex;
+      document.getElementById("jumpInput").value = "";
       updateStats();
-      alert("単語リストを保存しました！（" + words.length + "語）");
     }
 
-    // ---- 出題単語の表示 ----
-    function renderWord() {
-      const wordMain = document.getElementById("wordMain");
-      const wordSub  = document.getElementById("wordSub");
-      const currentIndexEl = document.getElementById("currentIndex");
-      const totalWordsEl   = document.getElementById("totalWords");
-      const roundInfoEl    = document.getElementById("roundInfo");
-      const modeInfoEl     = document.getElementById("modeInfo");
-
-      if (words.length === 0) {
-        wordMain.textContent = "単語が未登録";
-        wordSub.textContent  = "上のテキストエリアに単語を貼り付けて保存してください";
-        currentIndexEl.textContent = "-";
-        totalWordsEl.textContent   = "0";
-        roundInfoEl.textContent    = "0";
-        modeInfoEl.textContent     = "OFF";
-        return;
-      }
-
-      const idx = state.currentIndex % words.length;
-      const w   = words[idx];
-
-      wordMain.textContent = w.en || "(英単語なし)";
-      wordSub.textContent  = w.jp || "（意味未入力）";
-      currentIndexEl.textContent = (idx + 1) + " / " + words.length;
-      totalWordsEl.textContent   = String(words.length);
-      roundInfoEl.textContent    = String(state.round);
-      modeInfoEl.textContent     = state.randomMode ? "ON" : "OFF";
-    }
-
-    // ---- 回答を記録 ----
     function recordAnswer(result) {
-      if (words.length === 0) return;
-
-      const idx = state.currentIndex % words.length;
-      const now = new Date().toISOString(); // 後でCSVにしやすい形式
-
+      const nowIso = new Date().toISOString();
       logs.push({
-        time: now,
-        index: idx,
-        result: result  // "known" or "unknown"
+        time: nowIso,
+        index: state.currentIndex,
+        result: result   // "known" or "unknown"
       });
       saveLogs();
 
-      // 次の単語へ（ランダム or 順番）
-      moveNextIndex();
-      renderWord();
-      updateStats();
-    }
-
-    function moveNextIndex() {
-      if (words.length === 0) return;
-      if (state.randomMode) {
-        // ランダムに次のインデックスへ
-        const next = Math.floor(Math.random() * words.length);
-        state.currentIndex = next;
-      } else {
-        // 順番に進める
-        state.currentIndex++;
-        if (state.currentIndex >= words.length) {
-          state.currentIndex = 0;
-          state.round++;
-        }
-      }
+      // 次の単語へ自動で進む
+      state.currentIndex = Math.max(1, state.currentIndex + 1);
       saveState();
+      render();
     }
 
-    function nextWordManual() {
-      if (words.length === 0) return;
-      moveNextIndex();
-      renderWord();
-    }
-
-    function toggleRandomMode() {
-      state.randomMode = !state.randomMode;
-      saveState();
-      renderWord();
-    }
-
-    // ---- 集計表示 ----
-    function updateStats() {
-      const statsArea = document.getElementById("statsArea");
-      if (words.length === 0) {
-        statsArea.textContent = "";
+    function jumpToWord() {
+      const input = document.getElementById("jumpInput");
+      const value = parseInt(input.value, 10);
+      if (isNaN(value) || value < 1) {
+        alert("1以上の数字を入力してください。");
         return;
       }
+      state.currentIndex = value;
+      saveState();
+      render();
+    }
 
-      // 各単語ごとの最終回答を集計
-      const latestByWord = new Map(); // index -> lastResult
-      for (const log of logs) {
-        latestByWord.set(log.index, log.result);
+    function step(delta) {
+      const next = state.currentIndex + delta;
+      state.currentIndex = Math.max(1, next);
+      saveState();
+      render();
+    }
+
+    function updateStats() {
+      const statsEl = document.getElementById("stats");
+      if (logs.length === 0) {
+        statsEl.textContent = "まだ回答履歴がありません";
+        return;
       }
 
       let known = 0;
       let unknown = 0;
-      for (const [_, result] of latestByWord.entries()) {
-        if (result === "known") known++;
-        else if (result === "unknown") unknown++;
+      for (const log of logs) {
+        if (log.result === "known") known++;
+        else if (log.result === "unknown") unknown++;
       }
 
-      const totalAnswered = latestByWord.size;
-      const total = words.length;
-      const knownRate = totalAnswered ? Math.round((known / totalAnswered) * 100) : 0;
+      const total = logs.length;
+      const knownRate = Math.round((known / total) * 100);
 
-      statsArea.innerHTML =
-        `回答済み単語: ${totalAnswered} / ${total}` +
-        `<br>「わかる」になっている単語: ${known}` +
-        `<span class="badge">${knownRate}%</span>` +
-        `<br>「わからない」になっている単語: ${unknown}`;
+      statsEl.innerHTML =
+        `合計回答数: ${total}件　` +
+        `「わかる」: ${known}件 (${knownRate}%)　` +
+        `「わからない」: ${unknown}件`;
     }
 
-    function updateWordCountInfo() {
-      const wordCountInfo = document.getElementById("wordCountInfo");
-      if (words.length === 0) {
-        wordCountInfo.textContent = "まだ単語が登録されていません。";
-      } else {
-        wordCountInfo.textContent = `現在登録されている単語数: ${words.length} 語`;
-      }
-    }
-
-    // ---- 初期ロード処理 ----
+    // 初期ロード
     loadFromStorage();
-    updateWordCountInfo();
-    renderWord();
-    updateStats();
-
-    // 既に単語リストが保存されている時は、テキストエリアには何も入れない（誤上書き防止）
+    render();
   </script>
 </body>
 </html>
