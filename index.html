@@ -151,27 +151,28 @@
       opacity: 0.8;
     }
 
-    /* 履歴ビュー */
+    /* 履歴ビュー（Excel風グリッド） */
+    .history-top {
+      padding: 8px 14px;
+      background: #0f172a;
+      border-bottom: 1px solid #1f2937;
+      font-size: 0.8rem;
+    }
     .history-container {
       flex: 1;
-      overflow-y: auto;
+      overflow: auto;
       padding: 8px 8px 12px;
       background: #020617;
     }
-    .history-info {
-      font-size: 0.8rem;
-      opacity: 0.8;
-      margin-bottom: 6px;
-    }
     table {
-      width: 100%;
       border-collapse: collapse;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
+      min-width: 100%;
     }
     th, td {
-      padding: 6px 4px;
-      border-bottom: 1px solid #1f2937;
-      text-align: left;
+      border: 1px solid #1f2937;
+      padding: 3px 4px;
+      text-align: center;
       white-space: nowrap;
     }
     th {
@@ -179,35 +180,26 @@
       top: 0;
       background: #020617;
       z-index: 1;
-    }
-    .history-select {
-      padding: 2px 4px;
-      border-radius: 4px;
-      border: 1px solid #4b5563;
-      background: #020617;
-      color: #e5e7eb;
-    }
-    .history-delete {
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: none;
-      background: #7f1d1d;
-      color: #fee2e2;
-      cursor: pointer;
-      font-size: 0.75rem;
-    }
-    .history-delete:active {
-      opacity: 0.8;
-      transform: scale(0.96);
-    }
-    .history-index-cell {
       font-weight: 600;
     }
-    .history-known {
-      color: #bbf7d0;
+    .history-index-cell {
+      background: #020617;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      font-weight: 600;
     }
-    .history-unknown {
-      color: #fecaca;
+    .grid-cell-known {
+      background: #14532d;
+    }
+    .grid-cell-unknown {
+      background: #7f1d1d;
+    }
+    .grid-cell-empty {
+      background: #020617;
+    }
+    .latest-info {
+      margin-bottom: 4px;
     }
   </style>
 </head>
@@ -263,24 +255,27 @@
       </div>
     </div>
 
-    <!-- 履歴ビュー -->
+    <!-- 履歴ビュー（Excel風） -->
     <div id="view-history" class="view">
-      <div class="header">
-        <div class="current-word">
-          履歴一覧・編集
+      <div class="history-top">
+        <div class="latest-info" id="latestInfo">
+          まだ履歴がありません。
         </div>
-        <div class="history-info">
-          各行の結果を変更したり、不要な履歴を削除できます。上から新しい順に表示。
+        <div class="row">
+          <button class="small-btn" onclick="editLastResult('known')">直前を「わかる」に修正</button>
+          <button class="small-btn" onclick="editLastResult('unknown')">直前を「わからない」に修正</button>
+          <button class="small-btn" onclick="deleteLast()">直前の記録を削除</button>
+        </div>
+        <div style="margin-top:4px; opacity:0.8;">
+          下の表：1列目が問番号、右に行くほどその問題の過去の履歴（緑＝わかる、赤＝わからない）。
         </div>
       </div>
       <div class="history-container">
         <table>
           <thead>
-            <tr>
-              <th>時刻</th>
+            <tr id="historyHeaderRow">
               <th>問番号</th>
-              <th>結果</th>
-              <th>操作</th>
+              <!-- ここに 1回目,2回目,... がJSで挿入される -->
             </tr>
           </thead>
           <tbody id="historyBody">
@@ -294,12 +289,13 @@
   <script>
     const STORAGE_STATE_KEY = "toeic_simple_state_v1";
     const STORAGE_LOGS_KEY  = "toeic_simple_logs_v1";
+    const MAX_QUESTIONS = 1500;   // 1〜1500問を行として表示
 
     let state = {
       currentIndex: 1   // 今何問目か（1始まり）
     };
 
-    // ログ: { time, index, result } を配列で保持
+    // ログ: { time, index, result } を配列で保持（古い→新しい順でpush）
     let logs = [];
 
     // ------------------ ストレージ関連 ------------------
@@ -342,83 +338,85 @@
       }
     }
 
-    // ------------------ 画面描画 ------------------
+    // ------------------ 画面描画（学習） ------------------
     function renderMain() {
       document.getElementById("currentIndex").textContent = state.currentIndex;
       document.getElementById("jumpInput").value = "";
       updateGlobalStats();
       updatePerQuestionStats();
+      updateLatestInfo();
     }
 
-    function renderHistory() {
+    // ------------------ 画面描画（履歴Excel風） ------------------
+    function renderHistoryGrid() {
+      const headerRow = document.getElementById("historyHeaderRow");
       const tbody = document.getElementById("historyBody");
-      tbody.innerHTML = "";
 
+      // ヘッダ行を初期化（先頭の「問番号」以外を削除）
+      while (headerRow.children.length > 1) {
+        headerRow.removeChild(headerRow.lastChild);
+      }
+
+      // ログがない場合は、空の表を出すかどうか
       if (logs.length === 0) {
-        const tr = document.createElement("tr");
-        const td = document.createElement("td");
-        td.colSpan = 4;
-        td.textContent = "まだ履歴がありません。";
-        tr.appendChild(td);
-        tbody.appendChild(tr);
+        tbody.innerHTML = "";
+        // ここでは「行も列も空」のシンプル表示にしておく
         return;
       }
 
-      // 新しいものを上に表示したいので逆順で回す
-      for (let i = logs.length - 1; i >= 0; i--) {
-        const log = logs[i];
+      // 問題ごとの履歴を集計
+      const historyByIndex = new Map(); // index -> [result, result, ...] （古い→新しい）
+      for (const log of logs) {
+        if (!historyByIndex.has(log.index)) {
+          historyByIndex.set(log.index, []);
+        }
+        historyByIndex.get(log.index).push(log.result);
+      }
+
+      // 列数（最大試行回数）を決める
+      let maxAttempts = 0;
+      for (const arr of historyByIndex.values()) {
+        if (arr.length > maxAttempts) maxAttempts = arr.length;
+      }
+
+      // ヘッダに「1回目〜maxAttempts回目」列を追加
+      for (let j = 0; j < maxAttempts; j++) {
+        const th = document.createElement("th");
+        th.textContent = (j + 1) + "回目";
+        headerRow.appendChild(th);
+      }
+
+      // 本体を作る
+      tbody.innerHTML = "";
+      for (let i = 1; i <= MAX_QUESTIONS; i++) {
         const tr = document.createElement("tr");
 
-        // 時刻
-        const tdTime = document.createElement("td");
-        const date = new Date(log.time);
-        tdTime.textContent = isNaN(date.getTime())
-          ? log.time
-          : date.toLocaleString();
-        tr.appendChild(tdTime);
-
-        // 問番号
+        // 問番号セル
         const tdIndex = document.createElement("td");
-        tdIndex.textContent = log.index;
+        tdIndex.textContent = i;
         tdIndex.className = "history-index-cell";
         tr.appendChild(tdIndex);
 
-        // 結果（編集可能）
-        const tdResult = document.createElement("td");
-        const select = document.createElement("select");
-        select.className = "history-select";
-        const optKnown = document.createElement("option");
-        optKnown.value = "known";
-        optKnown.textContent = "わかる";
-        const optUnknown = document.createElement("option");
-        optUnknown.value = "unknown";
-        optUnknown.textContent = "わからない";
-        select.appendChild(optKnown);
-        select.appendChild(optUnknown);
-        select.value = log.result;
+        const attempts = historyByIndex.get(i) || [];
 
-        if (log.result === "known") {
-          tdResult.classList.add("history-known");
-        } else {
-          tdResult.classList.add("history-unknown");
+        // 各回の結果セル
+        for (let j = 0; j < maxAttempts; j++) {
+          const td = document.createElement("td");
+          if (j < attempts.length) {
+            const result = attempts[j];
+            if (result === "known") {
+              td.className = "grid-cell-known";
+              td.textContent = ""; // 見た目だけ色でOK。必要なら "◯" とか入れても良い
+            } else if (result === "unknown") {
+              td.className = "grid-cell-unknown";
+              td.textContent = "";
+            }
+          } else {
+            td.className = "grid-cell-empty";
+            td.textContent = "";
+          }
+          tr.appendChild(td);
         }
-
-        select.onchange = function () {
-          updateLogResult(i, this.value);
-        };
-        tdResult.appendChild(select);
-        tr.appendChild(tdResult);
-
-        // 操作（削除）
-        const tdAction = document.createElement("td");
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "削除";
-        delBtn.className = "history-delete";
-        delBtn.onclick = function () {
-          deleteLog(i);
-        };
-        tdAction.appendChild(delBtn);
-        tr.appendChild(tdAction);
 
         tbody.appendChild(tr);
       }
@@ -438,9 +436,8 @@
       state.currentIndex = Math.max(1, state.currentIndex + 1);
       saveState();
 
-      // 両方の画面を更新
       renderMain();
-      renderHistory();
+      renderHistoryGrid();
     }
 
     function jumpToWord() {
@@ -504,29 +501,53 @@
         `この問題の履歴：「わかる」 ${known} 回 / 「わからない」 ${unknown} 回（合計 ${filtered.length} 回）`;
     }
 
-    // ------------------ 履歴編集 ------------------
-    function updateLogResult(indexInLogs, newResult) {
-      if (!logs[indexInLogs]) return;
-      logs[indexInLogs].result = newResult;
-      saveLogs();
-      // 変更が統計に反映されるよう両画面更新
-      renderMain();
-      renderHistory();
+    // ------------------ 直前1件の編集 ------------------
+    function getLastLog() {
+      if (logs.length === 0) return null;
+      return logs[logs.length - 1];
     }
 
-    function deleteLog(indexInLogs) {
-      if (!logs[indexInLogs]) return;
-      if (!confirm("この履歴を削除しますか？")) return;
-      logs.splice(indexInLogs, 1);
+    function updateLatestInfo() {
+      const el = document.getElementById("latestInfo");
+      const last = getLastLog();
+      if (!last) {
+        el.textContent = "まだ履歴がありません。";
+        return;
+      }
+      const date = new Date(last.time);
+      const timeStr = isNaN(date.getTime()) ? last.time : date.toLocaleString();
+      const resultStr = last.result === "known" ? "わかる" : "わからない";
+      el.textContent = `直前の記録：問 ${last.index} / 結果「${resultStr}」 / 時刻 ${timeStr}`;
+    }
+
+    function editLastResult(newResult) {
+      const last = getLastLog();
+      if (!last) {
+        alert("まだ履歴がありません。");
+        return;
+      }
+      last.result = newResult;
       saveLogs();
       renderMain();
-      renderHistory();
+      renderHistoryGrid();
+    }
+
+    function deleteLast() {
+      if (logs.length === 0) {
+        alert("まだ履歴がありません。");
+        return;
+      }
+      if (!confirm("直前の記録を削除しますか？")) return;
+      logs.pop();
+      saveLogs();
+      renderMain();
+      renderHistoryGrid();
     }
 
     // ------------------ 初期化 ------------------
     loadFromStorage();
     renderMain();
-    renderHistory();
+    renderHistoryGrid();
   </script>
 </body>
 </html>
